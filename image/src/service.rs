@@ -112,7 +112,8 @@ impl<'r> ImageService<'r> {
                 println!("Insert image metadata successfully");
                 Ok(model)
             }
-            Err(_) => {
+            Err(err) => {
+                println!("{:?}", err);
                 self.s3_client
                     .delete_object()
                     .bucket(&self.bucket_name)
