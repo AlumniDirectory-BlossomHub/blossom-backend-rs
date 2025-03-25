@@ -16,7 +16,7 @@ async fn upload_image(
     data: Form<Upload<'_>>,
     db: &State<DatabaseConnection>,
     s3_client: &State<Client>,
-) {
+) -> String {
     let image_service = ImageService::new(
         db,
         s3_client,
@@ -37,6 +37,10 @@ async fn upload_image(
 
     let result = image_service.upload_image(image).await;
     println!("{:?}", result);
+    match result {
+        Ok(model) => model.s3_key,
+        Err(err) => err.to_string(),
+    }
 }
 
 #[get("/image/<key>")]
