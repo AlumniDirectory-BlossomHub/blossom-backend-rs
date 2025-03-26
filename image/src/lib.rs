@@ -1,6 +1,7 @@
 use image::ImageFormat::Jpeg;
 use service::ImageService;
 
+pub mod errors;
 pub mod service;
 pub mod storage;
 

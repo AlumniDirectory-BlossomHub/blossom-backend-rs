@@ -30,7 +30,7 @@ async fn upload_image(
     println!("{:?}", result);
     match result {
         Ok(model) => model.s3_key,
-        Err(err) => err.to_string(),
+        Err(err) => format!("{:?}", err),
     }
 }
 
