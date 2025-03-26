@@ -19,17 +19,14 @@ pub async fn create_client() -> Client {
     Client::new(&config)
 }
 
-pub async fn ensure_bucket_exists(client: &Client) {
-    let bucket = std::env::var("MINIO_BUCKET").unwrap();
-    match client.head_bucket().bucket(&bucket).send().await {
-        Ok(_) => println!("Bucket exists"),
-        Err(_) => {
-            client
-                .create_bucket()
-                .bucket(&bucket)
-                .send()
-                .await
-                .expect("Failed to create bucket");
-        }
-    }
+pub async fn ensure_bucket_exists(client: &Client, bucket_name: &String) -> Result<(), ()> {
+    if let Err(_) = client.head_bucket().bucket(bucket_name).send().await {
+        client
+            .create_bucket()
+            .bucket(bucket_name)
+            .send()
+            .await
+            .map_err(|_| ())?;
+    };
+    Ok(())
 }
