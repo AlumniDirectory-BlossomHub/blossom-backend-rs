@@ -8,12 +8,11 @@ members = [
     ".",
     "entity",
     "image",
-    "migration",
 ]
 
 [dependencies]
 rocket = { version = "0.5.1", features = ["secrets", "tls", "json"] }
-sea-orm = { version = "1.1.0", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros"] }
+sqlx = { version = "0.8.3", features = ["postgres", "runtime-tokio-rustls"] }
 #argon2 = { version = "0.5.3" }
 
 entity = { path = "entity" }
