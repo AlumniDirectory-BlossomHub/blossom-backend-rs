@@ -1,16 +1,11 @@
 use crate::errors::ImageError;
-use crate::errors::ImageError::{MetaDataError, ProcessError, S3Error};
+use crate::errors::ImageError::{ProcessError, S3Error};
 use aws_sdk_s3::Client;
-use entity::image::{ActiveModel, Column, Entity, Model};
 use image::{DynamicImage, ImageFormat};
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, EntityTrait, ModelTrait,
-    QueryFilter, Set,
-};
 use std::io::Cursor;
 use std::time::Duration;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ImageService {
     bucket_name: String,
     image_format: Option<ImageFormat>,
@@ -70,10 +65,9 @@ impl ImageService {
     /// 上传并保存图片
     pub async fn upload_image(
         &self,
-        db: &DatabaseConnection,
         s3_client: &Client,
         image: DynamicImage,
-    ) -> Result<Model, ImageError> {
+    ) -> Result<String, ImageError> {
         let key = uuid::Uuid::new_v4().to_string();
 
         let image_processed = self.process_image(image).await?;
@@ -90,143 +84,19 @@ impl ImageService {
 
         println!("Uploaded image successfully");
 
-        // 保存到数据库
-        match (ActiveModel {
-            s3_bucket: Set(self.bucket_name.clone()),
-            s3_key: Set(key.clone()),
-            ..Default::default()
-        }
-        .insert(db)
-        .await)
-        {
-            Ok(model) => {
-                println!("Insert image metadata successfully");
-                Ok(model)
-            }
-            Err(err) => {
-                println!("{:?}", err);
-                s3_client
-                    .delete_object()
-                    .bucket(&self.bucket_name)
-                    .key(&key)
-                    .send()
-                    .await
-                    .map_err(|_| S3Error("Cannot delete image after failed metadata insertion"))?;
-                Err(MetaDataError("Cannot to save image metadata to database"))
-            }
-        }
-    }
-
-    /// 通过 id 删除图片
-    pub async fn delete_image_by_id(
-        &self,
-        db: &DatabaseConnection,
-        s3_client: &Client,
-        image_id: i32,
-    ) -> Result<(), ImageError> {
-        let image = self.get_image_by_id(db, image_id).await?;
-        self.delete_image(db, s3_client, image).await
-    }
-
-    /// 通过 s3_key 删除图片
-    pub async fn delete_image_by_key(
-        &self,
-        db: &DatabaseConnection,
-        s3_client: &Client,
-        image_key: String,
-    ) -> Result<(), ImageError> {
-        let image = self.get_image_by_key(db, image_key).await?;
-        self.delete_image(db, s3_client, image).await
-    }
-
-    /// 通过 id 获取图片预签名 url
-    pub async fn get_image_url_by_id(
-        &self,
-        db: &DatabaseConnection,
-        s3_client: &Client,
-        image_id: i32,
-    ) -> Result<String, ImageError> {
-        let image = self.get_image_by_id(db, image_id).await?;
-        self.get_s3_presigned_url(s3_client, image).await
-    }
-
-    /// 通过 s3_key 获取图片预签名 url
-    pub async fn get_image_url_by_key(
-        &self,
-        db: &DatabaseConnection,
-        s3_client: &Client,
-        image_key: String,
-    ) -> Result<String, ImageError> {
-        let image = self.get_image_by_key(db, image_key).await?;
-        self.get_s3_presigned_url(s3_client, image).await
-    }
-
-    /// 通过 id 查找 image 元数据模型
-    async fn get_image_by_id(
-        &self,
-        db: &DatabaseConnection,
-        image_id: i32,
-    ) -> Result<Model, ImageError> {
-        match Entity::find_by_id(image_id).one(db).await {
-            Ok(Some(model)) => {
-                if model.s3_bucket != self.bucket_name {
-                    Err(MetaDataError("Image bucket does not match"))
-                } else {
-                    Ok(model)
-                }
-            }
-            _ => Err(MetaDataError("Cannot find image")),
-        }
-    }
-
-    /// 通过 s3_key 查找 image 元数据模型
-    async fn get_image_by_key(
-        &self,
-        db: &DatabaseConnection,
-        image_key: String,
-    ) -> Result<Model, ImageError> {
-        match Entity::find()
-            .filter(
-                Condition::all()
-                    .add(Column::S3Key.eq(&image_key))
-                    .add(Column::S3Bucket.eq(&self.bucket_name)),
-            )
-            .one(db)
-            .await
-        {
-            Ok(Some(model)) => Ok(model),
-            _ => Err(MetaDataError("Cannot find image")),
-        }
-    }
-
-    /// 执行图片删除操作
-    async fn delete_image(
-        &self,
-        db: &DatabaseConnection,
-        s3_client: &Client,
-        image: Model,
-    ) -> Result<(), ImageError> {
-        let key = image.s3_key.to_string();
-        image
-            .delete(db)
-            .await
-            .map_err(|_| MetaDataError("Cannot delete image metadata"))?;
-        match self.delete_s3_image(s3_client, &key).await {
-            Ok(_) => Ok(()),
-            Err(_) => Err(S3Error("Cannot delete image")),
-        }
+        Ok(key)
     }
 
     /// 生成预签名 url
-    async fn get_s3_presigned_url(
+    pub async fn get_presigned_url(
         &self,
         s3_client: &Client,
-        image: Model,
+        s3_key: impl Into<String>,
     ) -> Result<String, ImageError> {
         let presigned_url = s3_client
             .get_object()
             .bucket(&self.bucket_name)
-            .key(&image.s3_key)
+            .key(s3_key)
             .presigned(
                 aws_sdk_s3::presigning::PresigningConfig::expires_in(Duration::from_secs(3600))
                     .map_err(|_| S3Error("Cannot build PresigningConfig"))?,
@@ -237,7 +107,7 @@ impl ImageService {
     }
 
     /// 从 s3 储存桶删除图片
-    async fn delete_s3_image(&self, s3_client: &Client, key: &String) -> Result<(), ImageError> {
+    pub async fn delete_image(&self, s3_client: &Client, key: &String) -> Result<(), ImageError> {
         s3_client
             .delete_object()
             .bucket(&self.bucket_name)

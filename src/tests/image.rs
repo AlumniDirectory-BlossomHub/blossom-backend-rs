@@ -4,7 +4,6 @@ use image_service::ImageServices;
 use rocket::form::Form;
 use rocket::fs::TempFile;
 use rocket::State;
-use sea_orm::DatabaseConnection;
 
 #[derive(FromForm)]
 struct Upload<'r> {
@@ -14,7 +13,6 @@ struct Upload<'r> {
 #[post("/image/upload", data = "<data>")]
 async fn upload_image(
     data: Form<Upload<'_>>,
-    db: &State<DatabaseConnection>,
     s3_client: &State<Client>,
     image_services: &State<ImageServices>,
 ) -> String {
@@ -26,24 +24,20 @@ async fn upload_image(
         .decode()
         .unwrap();
 
-    let result = image_services.test.upload_image(db, s3_client, image).await;
+    let result = image_services.test.upload_image(s3_client, image).await;
     println!("{:?}", result);
-    match result {
-        Ok(model) => model.s3_key,
-        Err(err) => format!("{:?}", err),
-    }
+    result.unwrap_or_else(|err| format!("{:?}", err))
 }
 
 #[get("/image/<key>")]
 async fn get_image_url(
-    db: &State<DatabaseConnection>,
     s3_client: &State<Client>,
     image_services: &State<ImageServices>,
     key: String,
 ) -> String {
     image_services
         .test
-        .get_image_url_by_key(db, s3_client, key)
+        .get_presigned_url(s3_client, key)
         .await
         .unwrap()
 }

@@ -1,14 +1,16 @@
 use aws_config::Region;
-use aws_sdk_s3::Client;
 use aws_sdk_s3::config::Credentials;
+use aws_sdk_s3::Client;
 
 pub async fn create_client() -> Client {
     let config = aws_config::from_env()
-        .endpoint_url(std::env::var("MINIO_ENDPOINT").unwrap())
-        .region(Region::new(std::env::var("MINIO_REGION").unwrap()))
+        .endpoint_url(std::env::var("MINIO_ENDPOINT").expect("MINIO_ENDPOINT must be set"))
+        .region(Region::new(
+            std::env::var("MINIO_REGION").expect("MINIO_REGION must be set"),
+        ))
         .credentials_provider(Credentials::new(
-            std::env::var("MINIO_ACCESS_KEY").unwrap(),
-            std::env::var("MINIO_SECRET_KEY").unwrap(),
+            std::env::var("MINIO_ACCESS_KEY").expect("MINIO_ACCESS_KEY must be set"),
+            std::env::var("MINIO_SECRET_KEY").expect("MINIO_SECRET_KEY must be set"),
             None,
             None,
             "s3",
