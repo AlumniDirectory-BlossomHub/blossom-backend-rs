@@ -2,6 +2,7 @@
 extern crate rocket;
 
 use crate::tests::image;
+use account::auth::jwt::JWTConfig;
 use image_service::storage::create_client;
 use image_service::ImageServices;
 use sqlx::postgres::PgPoolOptions;
@@ -36,6 +37,8 @@ async fn rocket() -> _ {
         .manage(db)
         .manage(s3_client)
         .manage(image_services)
+        .manage(JWTConfig::from_env())
         .mount("/", routes![index])
+        .mount("/", account::routes())
         .mount("/test", image::routes())
 }

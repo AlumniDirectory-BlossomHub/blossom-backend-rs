@@ -1,0 +1,21 @@
+[package]
+name = "account"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rocket = { version = "0.5.1", features = ["secrets", "tls", "json"] }
+sqlx = { version = "0.8.3", features = ["postgres", "runtime-tokio-rustls", "macros"] }
+
+jsonwebtoken = "9.3.1"
+argon2 = "0.5.3"
+zxcvbn = "3.1.0"
+
+image-service = { path = "../image" }
+aws-sdk-s3 = "1.79.0"
+
+
+entity = { path = "../entity" }
+serde = { version = "1.0.219", features = ["derive"] }
+chrono = { version = "0.4.40", features = ["serde"] }
+lettre = { version = "0.11.15" }
