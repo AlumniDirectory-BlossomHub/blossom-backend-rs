@@ -8,7 +8,6 @@ rocket = { version = "0.5.1", features = ["secrets", "tls", "json"] }
 sqlx = { version = "0.8.3", features = ["postgres", "runtime-tokio-rustls", "macros"] }
 
 jsonwebtoken = "9.3.1"
-argon2 = "0.5.3"
 zxcvbn = "3.1.0"
 
 image-service = { path = "../image" }
