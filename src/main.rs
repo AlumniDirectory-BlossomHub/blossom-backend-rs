@@ -4,7 +4,7 @@ extern crate rocket;
 use crate::tests::image;
 use image_service::storage::create_client;
 use image_service::ImageServices;
-use sea_orm::Database;
+use sqlx::postgres::PgPoolOptions;
 
 mod tests;
 
@@ -17,7 +17,13 @@ fn index() -> &'static str {
 async fn rocket() -> _ {
     dotenvy::dotenv().ok();
     // 创建数据库连接池
-    let db = Database::connect(std::env::var("DATABASE_URL").unwrap())
+    let db = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(
+            std::env::var("DATABASE_URL")
+                .expect("DATABASE_URL must be set")
+                .as_str(),
+        )
         .await
         .expect("Failed to connect to database");
     // 初始化 MinIO
