@@ -5,11 +5,11 @@ use rocket::request::{self, FromRequest, Request};
 use sqlx::PgPool;
 
 /// 仅校验 jwt claims 正确性，不进行数据库校验
-pub struct UserClaims(Claims);
+pub struct UserClaims(pub Claims);
 /// 仅判定用户是否存在
-pub struct UserId(i32);
+pub struct UserId(pub i32);
 /// 判定用户是否存在并返回用户表全部内容
-pub struct User(UserModel);
+pub struct User(pub UserModel);
 
 async fn get_claims_from_req(req: &Request<'_>) -> Result<Claims, &'static str> {
     let jwt_config = req.rocket().state::<JWTConfig>().unwrap();
