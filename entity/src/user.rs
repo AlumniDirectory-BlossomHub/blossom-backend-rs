@@ -6,7 +6,8 @@ use chrono::{DateTime, Utc};
 use image_service::errors::ImageError;
 use image_service::service::ImageService;
 use serde::{Deserialize, Serialize, Serializer};
-use sqlx::{FromRow, Type};
+use sqlx::types::Uuid;
+use sqlx::{FromRow, PgPool, Type};
 
 #[derive(Clone, Debug, PartialEq, Eq, Type, Serialize, Deserialize)]
 #[repr(i16)]
@@ -33,6 +34,7 @@ pub struct AuthUser {
     pub id: i32,
     pub email: String,
     pub password: String,
+    pub status: AccountStatus,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, FromRow, Serialize, Deserialize)]
@@ -48,6 +50,13 @@ pub struct UserProfile {
     pub status: AccountStatus,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, FromRow, Serialize)]
+pub struct UserVerificationToken {
+    pub user_id: i32,
+    pub token: Uuid,
+    pub expire: DateTime<Utc>,
 }
 
 impl User {
@@ -92,6 +101,56 @@ impl UserProfile {
                 .get_presigned_url(s3_client, avatar_id)
                 .await?;
         };
+        Ok(())
+    }
+}
+
+impl UserVerificationToken {
+    pub fn new(user_id: i32) -> UserVerificationToken {
+        Self {
+            user_id,
+            token: Uuid::new_v4(),
+            expire: Utc::now()
+                .checked_add_signed(chrono::Duration::days(3))
+                .expect("Invalid timestamp"),
+        }
+    }
+
+    pub async fn save(&self, pool: &PgPool) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            r#"INSERT INTO "user_verification_token" (user_id, token, expire) VALUES ($1, $2, $3)"#,
+        )
+        .bind(self.user_id)
+        .bind(&self.token)
+        .bind(&self.expire)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn verify(pool: &PgPool, token: &Uuid) -> Result<Option<Self>, sqlx::Error> {
+        let row =
+            sqlx::query_as::<_, Self>(r#"SELECT * FROM user_verification_token WHERE token = $1"#)
+                .bind(token)
+                .fetch_optional(pool)
+                .await?;
+        match row {
+            None => Ok(None),
+            Some(token) => {
+                if token.expire >= Utc::now() {
+                    Ok(Some(token))
+                } else {
+                    Ok(None)
+                }
+            }
+        }
+    }
+
+    pub async fn delete(self, pool: &PgPool) -> Result<(), sqlx::Error> {
+        sqlx::query(r#"DELETE FROM user_verification_token WHERE token = $1"#)
+            .bind(self.token)
+            .execute(pool)
+            .await?;
         Ok(())
     }
 }

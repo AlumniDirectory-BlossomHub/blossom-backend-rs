@@ -4,8 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-rocket = { version = "0.5.1", features = ["secrets", "tls", "json"] }
+rocket = { version = "0.5.1", features = ["secrets", "tls", "json", "uuid"] }
 sqlx = { version = "0.8.3", features = ["postgres", "runtime-tokio-rustls", "macros"] }
+uuid = { version = "1.16.0", features = ["v4", "serde"] }
 
 jsonwebtoken = "9.3.1"
 zxcvbn = "3.1.0"
