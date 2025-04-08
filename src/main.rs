@@ -31,7 +31,7 @@ async fn rocket() -> _ {
     let s3_client = create_client().await;
 
     // 初始化图像服务
-    let image_services = ImageServices::init();
+    let image_services = ImageServices::init(&s3_client).await;
 
     rocket::build()
         .manage(db)
