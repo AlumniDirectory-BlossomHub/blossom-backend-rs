@@ -1,5 +1,6 @@
 use crate::errors::ImageError;
 use crate::errors::ImageError::{ProcessError, S3Error};
+use crate::storage::ensure_bucket_exists;
 use aws_sdk_s3::Client;
 use image::{DynamicImage, ImageFormat};
 use std::io::Cursor;
@@ -28,6 +29,13 @@ impl ImageService {
             image_size,
             image_filter,
         }
+    }
+
+    pub async fn ensure(self, s3_client: &Client) -> Self {
+        ensure_bucket_exists(s3_client, &self.bucket_name)
+            .await
+            .unwrap();
+        self
     }
 
     pub fn image_content_type(&self) -> &'static str {
