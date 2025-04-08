@@ -9,6 +9,7 @@ members = [
     "account",
     "entity",
     "image",
+    "utils",
 ]
 
 [dependencies]
