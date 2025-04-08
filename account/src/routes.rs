@@ -3,54 +3,48 @@ use crate::auth::jwt::JWTConfig;
 use crate::guards::User;
 use crate::validators::{validate_email, validate_password_level};
 use aws_sdk_s3::Client;
-use entity::user::{
-    hash_password, AccountStatus, AuthUser, User as UserModel, UserProfile, UserVerificationToken,
-};
+use chrono::Utc;
+use entity::user::{hash_password, AccountStatus, AuthUser, UserProfile, UserVerificationToken};
+use image::ImageReader;
 use image_service::ImageServices;
-use rocket::figment::Profile;
-use rocket::form::{Contextual, Form};
+use rocket::form::Form;
+use rocket::fs::TempFile;
 use rocket::http::Status;
+use rocket::response::status::BadRequest;
 use rocket::serde::json::Json;
-use rocket::{get, post, routes, FromForm, State};
+use rocket::{get, patch, post, put, routes, FromForm, State};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::collections::HashMap;
+use utils::generate_partial_form;
+use utils::guards::{ValidateError, ValidatedForm, ValidatedFormResult};
+use utils::validators::is_image_file;
 use uuid::Uuid;
 
 #[derive(Debug, FromForm, Serialize, Deserialize)]
 struct RegisterReq {
     #[field(validate = validate_email())]
     email: String,
-    #[field(validate = len(2..32).or_else(msg!("Username length must be between 2 and 32 characters")))]
+    #[field(validate =
+        len(2..32).or_else(msg!("Username length must be between 2 and 32 characters"))
+    )]
     username: String,
-    #[field(validate = len(8..32).or_else(msg!("Password length must be between 8 and 32 characters")))]
+    #[field(validate =
+        len(8..32).or_else(msg!("Password length must be between 8 and 32 characters"))
+    )]
     #[field(validate = validate_password_level())]
     password: String,
 }
 
 #[post("/account/register", data = "<form>")]
 async fn register(
-    form: Form<Contextual<'_, RegisterReq>>,
+    form: ValidatedFormResult<RegisterReq>,
     image_services: &State<ImageServices>,
     s3_client: &State<Client>,
     pool: &State<PgPool>,
-) -> Result<Json<UserProfile>, (Status, Json<HashMap<String, Vec<String>>>)> {
+) -> Result<Json<UserProfile>, ValidateError> {
     // 表单校验
-    let inner = form.into_inner();
-    if let None = inner.value {
-        let mut errors = HashMap::new();
-        for error in inner.context.errors() {
-            let field_name = error.name.as_ref().unwrap().to_string();
-            let message = error.to_string();
-
-            errors
-                .entry(field_name)
-                .or_insert_with(Vec::new)
-                .push(message);
-        }
-        return Err((Status::BadRequest, Json(errors)));
-    }
-    let data = inner.value.unwrap();
+    let ValidatedForm(data) = form?;
     // 校验邮箱是否存在
     let exists: bool = sqlx::query_scalar(r#"SELECT EXISTS(SELECT 1 FROM "user" WHERE email=$1)"#)
         .bind(&data.email)
@@ -58,13 +52,10 @@ async fn register(
         .await
         .unwrap();
     if exists {
-        return Err((
-            Status::BadRequest,
-            Json(HashMap::from([(
-                "email".to_string(),
-                Vec::from(["Email existed".to_string()]),
-            )])),
-        ));
+        return Err(BadRequest(Json(HashMap::from([(
+            "email".to_string(),
+            Vec::from(["Email existed".to_string()]),
+        )]))));
     }
     // 创建用户
     sqlx::query(r#"INSERT INTO "user" (email, username, password) VALUES ($1, $2, $3)"#)
@@ -79,10 +70,10 @@ async fn register(
     let mut user = sqlx::query_as::<_, UserProfile>(
         r#"SELECT id, email, admin_level, username, avatar_id, status, created_at, updated_at FROM "user" WHERE email=$1"#,
     )
-    .bind(&data.email)
-    .fetch_one(pool.inner())
-    .await
-    .unwrap();
+        .bind(&data.email)
+        .fetch_one(pool.inner())
+        .await
+        .unwrap();
 
     // 创建激活码
     let verification_token = UserVerificationToken::new(user.id);
