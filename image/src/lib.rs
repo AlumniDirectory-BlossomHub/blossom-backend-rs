@@ -5,6 +5,7 @@ use service::ImageService;
 pub mod errors;
 pub mod service;
 pub mod storage;
+pub mod utils;
 
 #[derive(Clone)]
 pub struct ImageServices {
