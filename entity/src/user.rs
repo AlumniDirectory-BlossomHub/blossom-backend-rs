@@ -46,7 +46,7 @@ pub struct UserProfile {
     #[sqlx(skip)]
     pub avatar: String,
     #[serde(skip_serializing)]
-    avatar_id: Option<String>,
+    pub avatar_id: Option<String>,
     pub status: AccountStatus,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,

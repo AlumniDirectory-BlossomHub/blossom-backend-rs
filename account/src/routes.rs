@@ -5,7 +5,7 @@ use crate::validators::{validate_email, validate_password_level};
 use aws_sdk_s3::Client;
 use chrono::Utc;
 use entity::user::{hash_password, AccountStatus, AuthUser, UserProfile, UserVerificationToken};
-use image::ImageReader;
+use image_service::utils::open_image;
 use image_service::ImageServices;
 use rocket::form::Form;
 use rocket::fs::TempFile;
@@ -165,6 +165,116 @@ async fn profile_unauthorized() -> (Status, &'static str) {
     (Status::Unauthorized, "invalid token")
 }
 
+generate_partial_form! {
+    #[derive(Debug, FromForm)]
+    struct UpdateProfileReq<'r> {
+        #[validate(len(2..32).or_else(msg!("Username length must be between 2 and 32 characters")))]
+        username: String,
+        #[validate(is_image_file())]
+        avatar: TempFile<'r>,
+    }
+}
+
+#[put("/account/profile", data = "<data>")]
+async fn update_profile(
+    pool: &State<PgPool>,
+    image_services: &State<ImageServices>,
+    s3_client: &State<Client>,
+    user: User,
+    data: ValidatedFormResult<UpdateProfileReq<'_>>,
+) -> Result<Json<UserProfile>, ValidateError> {
+    let ValidatedForm(data) = data?;
+    let avatar = open_image(data.avatar.path().unwrap());
+    let new_key = image_services
+        .avatar
+        .upload_image(s3_client.inner(), avatar)
+        .await
+        .unwrap();
+    if let Some(old_key) = &user.0.avatar_id {
+        image_services
+            .avatar
+            .delete_image(s3_client.inner(), old_key)
+            .await
+            .unwrap();
+    }
+    sqlx::query(r#"UPDATE "user" SET username=$1, avatar_id=$2 WHERE id=$3"#)
+        .bind(&data.username)
+        .bind(&new_key)
+        .bind(&user.0.id)
+        .execute(pool.inner())
+        .await
+        .unwrap();
+
+    let mut profile = UserProfile::from_user(user.0);
+    profile.username = data.username;
+    profile.avatar_id = Some(new_key);
+    profile.updated_at = Utc::now(); // 这里其实是不准确的
+    profile
+        .sign_avatar(&image_services.avatar, s3_client.inner())
+        .await
+        .unwrap();
+    Ok(Json(profile))
+}
+
+#[patch("/account/profile", data = "<data>")]
+async fn partial_update_profile(
+    pool: &State<PgPool>,
+    image_services: &State<ImageServices>,
+    s3_client: &State<Client>,
+    user: User,
+    data: ValidatedFormResult<PartialUpdateProfileReq<'_>>,
+) -> Result<Json<UserProfile>, ValidateError> {
+    let ValidatedForm(data) = data?;
+    let mut query = sqlx::QueryBuilder::new(r#"UPDATE "user" SET "#);
+    let User(mut user) = user;
+    if let Some(avatar) = data.avatar {
+        let avatar = open_image(avatar.path().unwrap());
+        let new_key = image_services
+            .avatar
+            .upload_image(s3_client.inner(), avatar)
+            .await
+            .unwrap();
+        if let Some(old_key) = &user.avatar_id {
+            image_services
+                .avatar
+                .delete_image(s3_client.inner(), old_key)
+                .await
+                .unwrap();
+        }
+        user.avatar_id = Some(new_key);
+        query.push("avatar_id=");
+        query.push_bind(&user.avatar_id);
+        query.push(",");
+    }
+    if let Some(username) = data.username {
+        user.username = username;
+        query.push("username=");
+        query.push_bind(&user.username);
+        query.push(",");
+    }
+    let now = Utc::now();
+    query.push("updated_at=");
+    query.push_bind(&now);
+    query.push(" WHERE id=");
+    query.push_bind(&user.id);
+    query.build().execute(pool.inner()).await.unwrap();
+    let mut profile = UserProfile::from_user(user);
+    profile.updated_at = now; // 这里其实是不准确的
+    profile
+        .sign_avatar(&image_services.avatar, s3_client.inner())
+        .await
+        .unwrap();
+    Ok(Json(profile))
+}
+
 pub fn routes() -> Vec<rocket::Route> {
-    routes![register, login, verification, profile, profile_unauthorized]
+    routes![
+        register,
+        login,
+        verification,
+        profile,
+        profile_unauthorized,
+        update_profile,
+        partial_update_profile
+    ]
 }
