@@ -11,7 +11,7 @@ pub fn validate_email<'v>(email: &String) -> form::Result<'v, ()> {
 
 pub fn validate_password_level<'v>(password: &String) -> form::Result<'v, ()> {
     let result = zxcvbn(password, &[]);
-    if (result.score() <= zxcvbn::Score::Two) {
+    if result.score() <= zxcvbn::Score::Two {
         Err(form::Error::validation("Password strength is too low"))?;
     }
     Ok(())

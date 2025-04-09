@@ -5,7 +5,7 @@ use aws_sdk_s3::Client;
 use chrono::{DateTime, Utc};
 use image_service::errors::ImageError;
 use image_service::service::ImageService;
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 use sqlx::types::Uuid;
 use sqlx::{FromRow, PgPool, Type};
 
