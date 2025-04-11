@@ -2,6 +2,16 @@ use aws_config::Region;
 use aws_sdk_s3::config::Credentials;
 use aws_sdk_s3::Client;
 
+/// 创建 s3 连接
+///
+/// 有关配置将从环境变量中读取
+///
+/// ```text
+/// MINIO_ENDPOINT=http://127.0.0.1:9000
+/// MINIO_ACCESS_KEY=your_minio_access_key
+/// MINIO_SECRET_KEY=your_minio_secret_key
+/// MINIO_REGION=your_minio_region
+/// ```
 pub async fn create_client() -> Client {
     let config = aws_config::from_env()
         .endpoint_url(std::env::var("MINIO_ENDPOINT").expect("MINIO_ENDPOINT must be set"))
@@ -21,6 +31,11 @@ pub async fn create_client() -> Client {
     Client::new(&config)
 }
 
+/// 确保指定的 bucket 存在
+///
+/// * `client` - S3 Client
+/// * `bucket_name` - bucket name
+///
 pub async fn ensure_bucket_exists(client: &Client, bucket_name: &String) -> Result<(), ()> {
     if let Err(_) = client.head_bucket().bucket(bucket_name).send().await {
         client
