@@ -1,0 +1,7 @@
+.idea
+
+target
+
+docker-compose.example.yaml
+.env.example
+Dockerfile.example
