@@ -1,4 +1,4 @@
-FROM rust:latest
+FROM rust:latest AS builder
 
 # Set the working directory inside the container
 WORKDIR /usr/src/app
@@ -6,11 +6,15 @@ WORKDIR /usr/src/app
 # Copy the Cargo.toml and Cargo.lock files
 COPY ./ ./
 
-# debug
-#RUN cargo watch -x run
-
 # build
 RUN cargo build --release
 
-# Start a new stage to create a smaller image without unnecessary build dependencies
-CMD ["./target/release/blossom_backend_rs"]
+FROM debian:stable-slim
+
+# Set the working directory inside the container
+WORKDIR /usr/src/app
+
+COPY --from=builder /usr/src/app/target/release/blossom_backend_rs ./
+COPY --from=builder /usr/src/app/.env ./
+
+CMD ["./blossom_backend_rs"]

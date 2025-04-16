@@ -47,11 +47,14 @@ services:
         condition: service_healthy
     networks:
       - app-network
+    volumes:
+      - cargo_registry:/root/.cargo/registry
 
 
 volumes:
   postgres_data:
   minio_data:
+  cargo_registry:
 
 networks:
   app-network:

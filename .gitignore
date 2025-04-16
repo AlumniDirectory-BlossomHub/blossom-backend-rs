@@ -5,3 +5,4 @@ target
 Dockerfile
 docker-compose.yaml
 .env
+Rocket.toml
