@@ -2,7 +2,5 @@ target
 
 .idea
 
-Dockerfile
-docker-compose.yaml
 .env
 Rocket.toml

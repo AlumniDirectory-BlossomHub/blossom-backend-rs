@@ -21,6 +21,7 @@ WORKDIR /usr/src/app
 
 COPY --from=builder /usr/src/app/target/release/blossom_backend_rs ./
 COPY --from=builder /usr/src/app/Rocket.toml ./
+COPY --from=builder /usr/src/app/templates ./templates
 #COPY --from=builder /usr/src/app/.env ./
 
 CMD ["./blossom_backend_rs"]

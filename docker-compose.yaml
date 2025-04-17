@@ -27,7 +27,7 @@ services:
     command: server /data --console-address ":9090" --address ":9000"
     volumes:
       - minio_data:/data
-      - ./init/minio:/docker-entrypoint-initdb.d
+      - ./init/minio:/docker-entrypoint-init.d
     networks:
       - app-network
     ports:
@@ -39,6 +39,14 @@ services:
       timeout: 2s
       retries: 5
 
+  minio-init:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: [ "/bin/sh", "-c", "/docker-entrypoint-init.d/01_create_user.sh" ]
+    volumes:
+      - ./init/minio:/docker-entrypoint-init.d
+  
   backend:
     build: .
     container_name: blossom_backend_rs
@@ -48,18 +56,17 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
     ports:
       - "8000:8000"
     networks:
       - app-network
-    volumes:
-      - cargo_registry:/root/.cargo/registry
 
 
 volumes:
   postgres_data:
   minio_data:
-  cargo_registry:
 
 networks:
   app-network:

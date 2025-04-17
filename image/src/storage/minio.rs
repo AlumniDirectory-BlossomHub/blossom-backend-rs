@@ -27,12 +27,6 @@ pub async fn create_client() -> Client {
         // )
         .build();
 
-    println!(
-        "{:?}, {:?}",
-        std::env::var("APP_MINIO_ACCESS_KEY").expect("APP_MINIO_ACCESS_KEY must be set"),
-        std::env::var("APP_MINIO_SECRET_KEY").expect("APP_MINIO_SECRET_KEY must be set"),
-    );
-
     Client::from_conf(config)
 }
 

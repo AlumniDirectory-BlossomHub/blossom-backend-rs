@@ -55,6 +55,10 @@ async fn rocket() -> _ {
     let db = db_connection()
         .await
         .expect("Failed to connect to database");
+
+    // 执行迁移
+    sqlx::migrate!("./migrations").run(&db).await.unwrap();
+
     // 初始化 MinIO
     let s3_client = create_client().await;
 
