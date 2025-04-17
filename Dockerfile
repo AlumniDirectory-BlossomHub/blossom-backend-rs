@@ -8,7 +8,8 @@ ENV CARGO_HOME=/usr/local/cargo-persistent
 # Copy the Cargo.toml and Cargo.lock files
 COPY ./ ./
 
-COPY ./.cargo/config.toml /usr/local/cargo-persistent/
+COPY ./cargo-config.toml /usr/local/cargo-persistent/config.toml
+COPY ./cargo-config.toml ./.cargo/config.toml
 
 # build
 RUN --mount=type=cache,target=/usr/local/cargo-persistent \
