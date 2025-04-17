@@ -3,8 +3,9 @@ extern crate rocket;
 
 use crate::tests::image;
 use account::auth::jwt::JWTConfig;
+use email::EmailBackend;
 use image_service::storage::create_client;
-use image_service::ImageServices;
+use image_service::{ImageServices, S3Client};
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use sqlx::PgPool;
 
@@ -60,10 +61,26 @@ async fn rocket() -> _ {
     sqlx::migrate!("./migrations").run(&db).await.unwrap();
 
     // 初始化 MinIO
-    let s3_client = create_client().await;
+    let internal_endpoint = std::env::var("MINIO_ENDPOINT").expect("MINIO_ENDPOINT must be set");
+    let external_endpoint =
+        std::env::var("MINIO_EXTERNAL_ENDPOINT").unwrap_or(internal_endpoint.clone());
+    let region = std::env::var("MINIO_REGION").expect("MINIO_REGION must be set");
+    let access_key =
+        std::env::var("APP_MINIO_ACCESS_KEY").expect("APP_MINIO_ACCESS_KEY must be set");
+    let secret_key =
+        std::env::var("APP_MINIO_SECRET_KEY").expect("APP_MINIO_SECRET_KEY must be set");
+    let s3_internal_client =
+        create_client(&internal_endpoint, &region, &access_key, &secret_key).await;
+    let s3_external_client =
+        create_client(&external_endpoint, &region, &access_key, &secret_key).await;
+
+    let s3_client = S3Client {
+        internal: s3_internal_client,
+        external: s3_external_client,
+    };
 
     // 初始化图像服务
-    let image_services = ImageServices::init(&s3_client).await;
+    let image_services = ImageServices::init(&s3_client.internal).await;
 
     rocket::build()
         .manage(db)

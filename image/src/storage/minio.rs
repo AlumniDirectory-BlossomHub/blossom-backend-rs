@@ -5,18 +5,17 @@ use aws_sdk_s3::error::SdkError;
 use aws_sdk_s3::operation::create_bucket::CreateBucketError;
 use aws_sdk_s3::{Client, Config};
 
-pub async fn create_client() -> Client {
+pub async fn create_client(
+    endpoint: &String,
+    region: &String,
+    access_key: &String,
+    secret_key: &String,
+) -> Client {
     let config = Config::builder()
-        .endpoint_url(std::env::var("MINIO_ENDPOINT").expect("MINIO_ENDPOINT must be set"))
-        .region(Region::new(
-            std::env::var("MINIO_REGION").expect("MINIO_REGION must be set"),
-        ))
+        .endpoint_url(endpoint)
+        .region(Region::new(region.clone()))
         .credentials_provider(Credentials::new(
-            std::env::var("APP_MINIO_ACCESS_KEY").expect("APP_MINIO_ACCESS_KEY must be set"),
-            std::env::var("APP_MINIO_SECRET_KEY").expect("APP_MINIO_SECRET_KEY must be set"),
-            None,
-            None,
-            "Static",
+            access_key, secret_key, None, None, "Static",
         ))
         .force_path_style(true)
         .behavior_version(BehaviorVersion::latest())
@@ -34,7 +33,7 @@ pub async fn ensure_bucket_exists(
     client: &Client,
     bucket_name: &String,
 ) -> Result<(), SdkError<CreateBucketError, HttpResponse>> {
-    if let Err(e) = client.head_bucket().bucket(bucket_name).send().await {
+    if let Err(_) = client.head_bucket().bucket(bucket_name).send().await {
         // println!("Bucket {} not found", bucket_name);
         // println!("{}", e);
         client

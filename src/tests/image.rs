@@ -1,6 +1,5 @@
-use aws_sdk_s3::Client;
 use image::ImageReader;
-use image_service::ImageServices;
+use image_service::{ImageServices, S3Client};
 use rocket::form::Form;
 use rocket::fs::TempFile;
 use rocket::State;
@@ -13,7 +12,7 @@ struct Upload<'r> {
 #[post("/image/upload", data = "<data>")]
 async fn upload_image(
     data: Form<Upload<'_>>,
-    s3_client: &State<Client>,
+    s3_client: &State<S3Client>,
     image_services: &State<ImageServices>,
 ) -> String {
     println!("{:?}", data.file.path());
@@ -24,20 +23,23 @@ async fn upload_image(
         .decode()
         .unwrap();
 
-    let result = image_services.test.upload_image(s3_client, image).await;
+    let result = image_services
+        .test
+        .upload_image(&s3_client.internal, image)
+        .await;
     println!("{:?}", result);
     result.unwrap_or_else(|err| format!("{:?}", err))
 }
 
 #[get("/image/<key>")]
 async fn get_image_url(
-    s3_client: &State<Client>,
+    s3_client: &State<S3Client>,
     image_services: &State<ImageServices>,
     key: String,
 ) -> String {
     image_services
         .test
-        .get_presigned_url(s3_client, key)
+        .get_presigned_url(&s3_client.external, key)
         .await
         .unwrap()
 }
