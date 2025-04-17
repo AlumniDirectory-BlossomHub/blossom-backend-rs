@@ -3,11 +3,16 @@ FROM rust:latest AS builder
 # Set the working directory inside the container
 WORKDIR /usr/src/app
 
+ENV CARGO_HOME=/usr/local/cargo-persistent
+
 # Copy the Cargo.toml and Cargo.lock files
 COPY ./ ./
 
+COPY ./.cargo/config.toml /usr/local/cargo-persistent/
+
 # build
-RUN cargo build --release
+RUN --mount=type=cache,target=/usr/local/cargo-persistent \
+    cargo build --release
 
 FROM debian:stable-slim
 

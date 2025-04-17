@@ -1,0 +1,6 @@
+[source.crates-io]
+replace-with = 'osa' # 指定使用下面哪个源，修改为source.后面的内容即可
+
+#OSA
+[source.osa]
+registry = "sparse+https://mirrors.osa.moe/crates.io-index/"
