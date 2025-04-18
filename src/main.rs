@@ -3,7 +3,6 @@ extern crate rocket;
 
 use crate::tests::image;
 use account::auth::jwt::JWTConfig;
-use email::EmailBackend;
 use image_service::storage::create_client;
 use image_service::{ImageServices, S3Client};
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
