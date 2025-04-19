@@ -6,6 +6,8 @@ use image::{DynamicImage, ImageFormat};
 use std::io::Cursor;
 use std::time::Duration;
 
+/// 图片服务
+///
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ImageService {
     bucket_name: String,
@@ -15,6 +17,25 @@ pub struct ImageService {
 }
 
 impl ImageService {
+    /// 创建服务对象
+    ///
+    /// * `bucket_name` - 储存容器名称（不带前缀）
+    /// * `image_format` - 储存的图片格式
+    /// * `image_size` - 储存的图片大小
+    /// * `image_filter` - 图片缩放过滤器
+    ///
+    /// Examples:
+    /// ```
+    /// # use image_service::service::ImageService;
+    /// use image::ImageFormat::Jpeg;
+    ///
+    /// let image_service = ImageService::new(
+    ///     "test_bucket",
+    ///     Some(Jpeg),
+    ///     Some((128, 128)),
+    ///     None, // 默认 image::imageops::FilterType::Lanczos3
+    /// );
+    /// ```
     pub fn new(
         bucket_name: impl Into<String>,
         image_format: Option<ImageFormat>,
@@ -31,7 +52,7 @@ impl ImageService {
             image_filter,
         }
     }
-
+    /// 确保本服务的 bucket 存在
     pub async fn ensure(self, s3_client: &Client) -> Self {
         ensure_bucket_exists(s3_client, &self.bucket_name)
             .await
@@ -39,6 +60,7 @@ impl ImageService {
         self
     }
 
+    #[doc(hidden)]
     pub fn image_content_type(&self) -> &'static str {
         match self.image_format {
             Some(ImageFormat::Png) => "image/png",
@@ -51,6 +73,8 @@ impl ImageService {
     }
 
     /// 处理图片
+    ///
+    /// 将传入的图片按照要求处理
     async fn process_image(&self, image: DynamicImage) -> Result<Vec<u8>, ImageError> {
         let resized = match self.image_size {
             Some((width, height)) => image.resize_to_fill(
@@ -72,6 +96,24 @@ impl ImageService {
     }
 
     /// 上传并保存图片
+    ///
+    /// Examples:
+    /// ```
+    /// # use image::ImageFormat::Jpeg;
+    /// # use image_service::service::ImageService;
+    /// # use image_service::storage::create_client;
+    /// use image_service::utils::open_image;
+    /// # async fn main() {
+    ///
+    /// # let s3_client = create_client().await;
+    /// let service = ImageService::new("test", Some(Jpeg), Some((128, 128)), None);
+    /// let image = open_image("/path/to/image".as_ref());
+    ///
+    /// service.upload_image(&s3_client, image)
+    ///     .await
+    ///     .map_err(|_| "fail to upload image")?;
+    /// # }
+    /// ```
     pub async fn upload_image(
         &self,
         s3_client: &Client,

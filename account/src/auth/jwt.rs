@@ -22,6 +22,7 @@ impl JWTConfig {
     }
 }
 
+/// 构建 jwt token
 pub fn create_token(user_id: i32, config: &JWTConfig) -> String {
     let expiration = chrono::Utc::now()
         .checked_add_signed(chrono::Duration::seconds(config.expiration))
@@ -41,6 +42,7 @@ pub fn create_token(user_id: i32, config: &JWTConfig) -> String {
     .unwrap()
 }
 
+/// 校验 jwt token
 pub fn validate_token(
     token: &str,
     config: &JWTConfig,

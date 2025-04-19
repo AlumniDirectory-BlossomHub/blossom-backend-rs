@@ -4,13 +4,20 @@ use rocket::http::Status;
 use rocket::request::{self, FromRequest, Request};
 use sqlx::PgPool;
 
+/// jwt claims
+///
 /// 仅校验 jwt claims 正确性，不进行数据库校验
 pub struct UserClaims(pub Claims);
+/// user id
+///
 /// 仅判定用户是否存在
 pub struct UserId(pub i32);
+/// full user
+///
 /// 判定用户是否存在并返回用户表全部内容
 pub struct User(pub UserModel);
 
+#[doc(hidden)]
 async fn get_claims_from_req(req: &Request<'_>) -> Result<Claims, &'static str> {
     let jwt_config = req.rocket().state::<JWTConfig>().unwrap();
     let token = req

@@ -4,10 +4,12 @@ use quote::{quote, ToTokens};
 use syn::fold::Fold;
 use syn::{parse_macro_input, parse_quote, Expr, ExprCall, Field, Fields, ItemStruct};
 
+#[doc(hidden)]
 struct FirstCallModifier {
     modified: bool,
 }
 
+#[doc(hidden)]
 impl Fold for FirstCallModifier {
     // 处理普通函数调用
     fn fold_expr_call(&mut self, call: ExprCall) -> ExprCall {
@@ -34,6 +36,47 @@ impl Fold for FirstCallModifier {
     }
 }
 
+/// Generate partial and full form
+///
+///
+/// Examples:
+/// ```
+/// # use partial_form_codegen::generate_partial_form;
+/// # use rocket::FromForm;
+/// # use rocket::fs::TempFile;
+///
+/// generate_partial_form! {
+///     #[derive(Debug, FromForm)]
+///     struct UpdateProfileReq<'r> {
+///         #[validate(len(2..32).or_else(msg!("Username length must be between 2 and 32 characters")))]
+///         username: String,
+///         avatar: TempFile<'r>,
+///     }
+///  }
+/// ```
+/// it will be expanded to
+/// ```
+/// # use partial_form_codegen::generate_partial_form;
+/// # use rocket::FromForm;
+/// # use rocket::fs::TempFile;
+///  #[derive(Debug, FromForm)]
+///  struct UpdateProfileReq<'r> {
+///     #[field(validate=len(2..32).or_else(msg!("Username length must be between 2 and 32 characters")))]
+///     username: String,
+///     avatar: TempFile<'r>,
+///  }
+///  #[derive(Debug, FromForm)]
+///  struct PartialUpdateProfileReq<'r> {
+///     #[field(validate=(
+///         |x:&Option<_>| match x {
+///             Some(v)=>len(&v, 2..32).or_else(msg!("Username length must be between 2 and 32 characters")),
+///             None=>Ok(()),
+///         })( )
+///     )]
+///     avatar: Option<TempFile<'r>>,
+///  }
+/// ```
+///
 #[proc_macro]
 pub fn generate_partial_form(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as ItemStruct);
