@@ -6,7 +6,7 @@ use aws_sdk_s3::Client;
 use chrono::Utc;
 use entity::user::{hash_password, AccountStatus, AuthUser, UserProfile, UserVerificationToken};
 use image_service::utils::open_image;
-use image_service::ImageServices;
+use image_service::{ImageServices, S3Client};
 use rocket::form::Form;
 use rocket::fs::TempFile;
 use rocket::http::Status;
@@ -40,7 +40,7 @@ struct RegisterReq {
 async fn register(
     form: ValidatedFormResult<RegisterReq>,
     image_services: &State<ImageServices>,
-    s3_client: &State<Client>,
+    s3_client: &State<S3Client>,
     pool: &State<PgPool>,
 ) -> Result<Json<UserProfile>, ValidateError> {
     // 表单校验
@@ -81,7 +81,7 @@ async fn register(
     // TODO: 发送邮件
     verification_token.save(pool.inner()).await.unwrap();
 
-    user.sign_avatar(&image_services.avatar, s3_client.inner())
+    user.sign_avatar(&image_services.avatar, &s3_client.external)
         .await
         .unwrap();
     Ok(Json(user))
@@ -149,12 +149,12 @@ async fn login(
 #[get("/account/profile", rank = 1)]
 async fn profile(
     image_services: &State<ImageServices>,
-    s3_client: &State<Client>,
+    s3_client: &State<S3Client>,
     user: User,
 ) -> Json<UserProfile> {
     let mut user_profile = UserProfile::from_user(user.0);
     user_profile
-        .sign_avatar(&image_services.avatar, s3_client.inner())
+        .sign_avatar(&image_services.avatar, &s3_client.external)
         .await
         .unwrap();
     Json(user_profile)
@@ -179,7 +179,7 @@ generate_partial_form! {
 async fn update_profile(
     pool: &State<PgPool>,
     image_services: &State<ImageServices>,
-    s3_client: &State<Client>,
+    s3_client: &State<S3Client>,
     user: User,
     data: ValidatedFormResult<UpdateProfileReq<'_>>,
 ) -> Result<Json<UserProfile>, ValidateError> {
@@ -187,13 +187,13 @@ async fn update_profile(
     let avatar = open_image(data.avatar.path().unwrap());
     let new_key = image_services
         .avatar
-        .upload_image(s3_client.inner(), avatar)
+        .upload_image(&s3_client.internal, avatar)
         .await
         .unwrap();
     if let Some(old_key) = &user.0.avatar_id {
         image_services
             .avatar
-            .delete_image(s3_client.inner(), old_key)
+            .delete_image(&s3_client.internal, old_key)
             .await
             .unwrap();
     }
@@ -210,7 +210,7 @@ async fn update_profile(
     profile.avatar_id = Some(new_key);
     profile.updated_at = Utc::now(); // 这里其实是不准确的
     profile
-        .sign_avatar(&image_services.avatar, s3_client.inner())
+        .sign_avatar(&image_services.avatar, &s3_client.external)
         .await
         .unwrap();
     Ok(Json(profile))
@@ -220,7 +220,7 @@ async fn update_profile(
 async fn partial_update_profile(
     pool: &State<PgPool>,
     image_services: &State<ImageServices>,
-    s3_client: &State<Client>,
+    s3_client: &State<S3Client>,
     user: User,
     data: ValidatedFormResult<PartialUpdateProfileReq<'_>>,
 ) -> Result<Json<UserProfile>, ValidateError> {
@@ -231,13 +231,13 @@ async fn partial_update_profile(
         let avatar = open_image(avatar.path().unwrap());
         let new_key = image_services
             .avatar
-            .upload_image(s3_client.inner(), avatar)
+            .upload_image(&s3_client.internal, avatar)
             .await
             .unwrap();
         if let Some(old_key) = &user.avatar_id {
             image_services
                 .avatar
-                .delete_image(s3_client.inner(), old_key)
+                .delete_image(&s3_client.internal, old_key)
                 .await
                 .unwrap();
         }
@@ -261,7 +261,7 @@ async fn partial_update_profile(
     let mut profile = UserProfile::from_user(user);
     profile.updated_at = now; // 这里其实是不准确的
     profile
-        .sign_avatar(&image_services.avatar, s3_client.inner())
+        .sign_avatar(&image_services.avatar, &s3_client.external)
         .await
         .unwrap();
     Ok(Json(profile))
