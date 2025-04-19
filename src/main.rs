@@ -1,3 +1,13 @@
+//! blossom-backend-rs
+//!
+//! - run
+//! ```shell
+//! cargo run
+//! ```
+//! - run with hot reload
+//! ```shell
+//! cargo watch -x run
+//! ```
 #[macro_use]
 extern crate rocket;
 

@@ -9,26 +9,36 @@ use serde::{Deserialize, Serialize};
 use sqlx::types::Uuid;
 use sqlx::{FromRow, PgPool, Type};
 
+/// 账户状态
 #[derive(Clone, Debug, PartialEq, Eq, Type, Serialize, Deserialize)]
 #[repr(i16)]
 pub enum AccountStatus {
+    /// 未激活
     Inactive = 0,
+    /// 已激活
     Active = 1,
 }
 
+/// 数据库完整表单
 #[derive(Clone, Debug, PartialEq, Eq, FromRow, Serialize, Deserialize)]
 pub struct User {
     pub id: i32,
+    /// VARCHAR(255)
     pub email: String,
-    pub password: String, // 密码 hash 值
+    /// VARCHAR(255), argon2 加密
+    pub password: String,
+    /// SMALLINT
     pub admin_level: i16,
+    /// VARCHAR(255)
     pub username: String,
+    /// 头像 s3_key, VARCHAR(36), uuid 转字符串
     pub avatar_id: Option<String>,
     pub status: AccountStatus,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
 
+/// 用户认证表单
 #[derive(Clone, Debug, FromRow)]
 pub struct AuthUser {
     pub id: i32,
@@ -37,6 +47,9 @@ pub struct AuthUser {
     pub status: AccountStatus,
 }
 
+/// 用户资料
+///
+/// 前端展示给用户本人
 #[derive(Clone, Debug, PartialEq, Eq, FromRow, Serialize, Deserialize)]
 pub struct UserProfile {
     pub id: i32,
@@ -52,6 +65,7 @@ pub struct UserProfile {
     pub updated_at: DateTime<Utc>,
 }
 
+/// 账户激活 token
 #[derive(Clone, Debug, PartialEq, Eq, FromRow, Serialize)]
 pub struct UserVerificationToken {
     pub user_id: i32,
@@ -60,6 +74,9 @@ pub struct UserVerificationToken {
 }
 
 impl User {
+    /// 加密并修改密码
+    ///
+    /// attention: 不会保存到数据库
     pub fn set_password(&mut self, password: &str) -> Result<(), &'static str> {
         self.password = hash_password(password).map_err(|_| "Unable to hash password")?;
         Ok(())
@@ -91,6 +108,9 @@ impl UserProfile {
         }
     }
 
+    /// 给头像签名
+    ///
+    /// attention: 向前端返回前必须调用本函数
     pub async fn sign_avatar(
         &mut self,
         image_service: &ImageService,
@@ -155,6 +175,9 @@ impl UserVerificationToken {
     }
 }
 
+/// 加密密码原文
+///
+/// 使用 argon2 加密
 pub fn hash_password(password: &str) -> Result<String, argon2::password_hash::Error> {
     let salt = SaltString::generate(&mut OsRng);
     Ok(Argon2::default()
