@@ -42,7 +42,8 @@ impl ImageService {
         image_size: Option<(u32, u32)>,
         image_filter: Option<image::imageops::FilterType>,
     ) -> Self {
-        let bucket_name = std::env::var("MINIO_BUCKET_PREFIX").unwrap_or_else(|_| String::new())
+        let bucket_name = std::env::var("APP_MINIO_BUCKET_PREFIX")
+            .unwrap_or_else(|_| String::new())
             + &bucket_name.into();
         Self {
             bucket_name,

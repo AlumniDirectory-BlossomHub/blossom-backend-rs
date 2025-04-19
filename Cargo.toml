@@ -22,3 +22,5 @@ image = { version = "0.25.5", features = ["jpeg", "png"] }
 
 dotenvy = "0.15"
 aws-sdk-s3 = "1.79.0"
+
+openssl = { version = "0.10.71", features = ["vendored"] }
