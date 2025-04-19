@@ -7,13 +7,15 @@ use aws_sdk_s3::{Client, Config};
 
 /// 创建 s3 连接
 ///
-/// 有关配置将从环境变量中读取
+/// ```
+/// # use image_service::storage::create_client;
+/// #
+/// let endpoint = "http://endpoint:9000".to_string();
+/// let region = "your-region".to_string();
+/// let access_key = "your-access-key".to_string();
+/// let secret_key = "your-secret-key".to_string();
 ///
-/// ```text
-/// MINIO_ENDPOINT=http://127.0.0.1:9000
-/// MINIO_ACCESS_KEY=your_minio_access_key
-/// MINIO_SECRET_KEY=your_minio_secret_key
-/// MINIO_REGION=your_minio_region
+/// let client = create_client(&endpoint, &region, &access_key, &secret_key)
 /// ```
 pub async fn create_client(
     endpoint: &String,
