@@ -52,6 +52,7 @@ pub struct S3Client {
 #[derive(Clone)]
 pub struct ImageServices {
     pub avatar: ImageService,
+    pub person_photo: ImageService,
     pub test: ImageService,
 }
 
@@ -64,6 +65,14 @@ impl ImageServices {
             avatar: ImageService::new("avatar", Some(Jpeg), Some((128u32, 128u32)), None)
                 .ensure(s3_client)
                 .await,
+            person_photo: ImageService::new(
+                "person-photo",
+                Some(Jpeg),
+                Some((768u32, 1024u32)),
+                None,
+            )
+            .ensure(s3_client)
+            .await,
             test: ImageService::new("test", Some(Jpeg), Some((200u32, 128u32)), None)
                 .ensure(s3_client)
                 .await,
