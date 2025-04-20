@@ -7,6 +7,7 @@ edition = "2024"
 members = [
     ".",
     "account",
+    "email",
     "entity",
     "image",
     "utils",
@@ -19,8 +20,14 @@ sqlx = { version = "0.8.3", features = ["postgres", "runtime-tokio-rustls"] }
 account = { path = "account" }
 image-service = { path = "image" }
 image = { version = "0.25.5", features = ["jpeg", "png"] }
+email = { path = "email" }
 
 dotenvy = "0.15"
 aws-sdk-s3 = "1.79.0"
 
 openssl = { version = "0.10.71", features = ["vendored"] }
+
+[dependencies.lettre]
+version = "0.11.15"
+default-features = false
+features = ["tokio1", "tokio1-rustls-tls", "smtp-transport", "builder", "serde"]

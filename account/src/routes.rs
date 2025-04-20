@@ -2,11 +2,12 @@ use crate::auth::jwt;
 use crate::auth::jwt::JWTConfig;
 use crate::guards::User;
 use crate::validators::{validate_email, validate_password_level};
-use aws_sdk_s3::Client;
 use chrono::Utc;
+use email::{templates, EmailBackend};
 use entity::user::{hash_password, AccountStatus, AuthUser, UserProfile, UserVerificationToken};
 use image_service::utils::open_image;
 use image_service::{ImageServices, S3Client};
+use lettre::{AsyncTransport, Message};
 use rocket::form::Form;
 use rocket::fs::TempFile;
 use rocket::http::Status;
@@ -41,6 +42,7 @@ async fn register(
     form: ValidatedFormResult<RegisterReq>,
     image_services: &State<ImageServices>,
     s3_client: &State<S3Client>,
+    email_backend: &State<EmailBackend>,
     pool: &State<PgPool>,
 ) -> Result<Json<UserProfile>, ValidateError> {
     // 表单校验
@@ -78,7 +80,30 @@ async fn register(
     // 创建激活码
     let verification_token = UserVerificationToken::new(user.id);
     println!("{:?}", verification_token.token);
-    // TODO: 发送邮件
+    // 发送邮件
+    let mut context = tera::Context::new();
+    context.insert(
+        "verification_url",
+        std::env::var("APP_ACCOUNT_ACTIVATION_URL_FORMAT")
+            .unwrap_or("http://localhost:8000/account/verification/<token>".to_string())
+            .replace("<token>", &verification_token.token.to_string())
+            .as_str(),
+    );
+    let body = templates().render("verification.html", &context).unwrap();
+    // 构建邮件
+    let email = Message::builder()
+        .from(email_backend.from.clone())
+        .to(user.email.parse().unwrap())
+        .subject("Welcome to our service!")
+        .header(lettre::message::header::ContentType::TEXT_HTML)
+        .body(body)
+        .unwrap();
+    match email_backend.send(email).await {
+        Ok(_) => {}
+        Err(e) => eprintln!("{}", e),
+    }
+
+    // 保存
     verification_token.save(pool.inner()).await.unwrap();
 
     user.sign_avatar(&image_services.avatar, &s3_client.external)
@@ -105,6 +130,12 @@ async fn verification(pool: &State<PgPool>, token: Uuid) -> (Status, &'static st
         }
         None => (Status::Unauthorized, "Invalid token"),
     }
+}
+
+#[allow(unused_variables)]
+#[get("/account/verification/<token>")]
+async fn verification_get(token: Uuid) -> Status {
+    Status::MethodNotAllowed
 }
 
 #[derive(Debug, FromForm, Serialize, Deserialize)]
@@ -272,6 +303,7 @@ pub fn routes() -> Vec<rocket::Route> {
         register,
         login,
         verification,
+        verification_get,
         profile,
         profile_unauthorized,
         update_profile,

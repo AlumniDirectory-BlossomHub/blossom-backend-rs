@@ -13,6 +13,7 @@ extern crate rocket;
 
 use crate::tests::image;
 use account::auth::jwt::JWTConfig;
+use email::EmailBackend;
 use image_service::storage::create_client;
 use image_service::{ImageServices, S3Client};
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
@@ -91,11 +92,24 @@ async fn rocket() -> _ {
     // 初始化图像服务
     let image_services = ImageServices::init(&s3_client.internal).await;
 
+    // 初始化邮件服务
+    let email = EmailBackend::from_env();
+    match email.test_connection().await {
+        Ok(true) => {}
+        Ok(false) => {
+            println!("Email connection does not exist");
+        }
+        Err(e) => {
+            panic!("{}", e)
+        }
+    }
+
     rocket::build()
         .manage(db)
         .manage(s3_client)
         .manage(image_services)
         .manage(JWTConfig::from_env())
+        .manage(email)
         .mount("/", routes![index])
         .mount("/", account::routes())
         .mount("/test", image::routes())
