@@ -8,6 +8,7 @@ name = "entity"
 path = "src/lib.rs"
 
 [dependencies]
+rocket = { version = "0.5.1", features = ["secrets", "tls", "json"] }
 argon2 = "0.5.3"
 sqlx = { version = "0.8.3", features = ["postgres", "runtime-tokio-rustls", "chrono", "uuid"] }
 chrono = { version = "0.4.40", features = ["serde"] }

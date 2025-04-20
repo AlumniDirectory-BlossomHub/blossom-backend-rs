@@ -5,4 +5,9 @@ edition = "2024"
 
 [dependencies]
 rocket = { version = "0.5.1", features = ["secrets", "tls", "json", "uuid"] }
+lettre = { version = "0.11.15" }
+chrono = "0.4.40"
+
+phonenumber = { version = "0.3.7" }
+
 partial_form_codegen = { path = "./partial_form_codegen" }

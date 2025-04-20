@@ -98,5 +98,6 @@ async fn rocket() -> _ {
         .manage(JWTConfig::from_env())
         .mount("/", routes![index])
         .mount("/", account::routes())
+        .mount("/", person::routes())
         .mount("/test", image::routes())
 }
