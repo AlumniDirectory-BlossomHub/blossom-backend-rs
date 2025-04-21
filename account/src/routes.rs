@@ -1,7 +1,7 @@
 use crate::auth::jwt;
 use crate::auth::jwt::JWTConfig;
 use crate::guards::User;
-use crate::validators::{validate_email, validate_password_level};
+use crate::validators::validate_password_level;
 use chrono::Utc;
 use email::{templates, EmailBackend};
 use entity::user::{hash_password, AccountStatus, AuthUser, UserProfile, UserVerificationToken};
@@ -19,12 +19,12 @@ use sqlx::PgPool;
 use std::collections::HashMap;
 use utils::generate_partial_form;
 use utils::guards::{ValidateError, ValidatedForm, ValidatedFormResult};
-use utils::validators::is_image_file;
+use utils::validators::{is_email, is_image_file};
 use uuid::Uuid;
 
 #[derive(Debug, FromForm, Serialize, Deserialize)]
 struct RegisterReq {
-    #[field(validate = validate_email())]
+    #[field(validate = is_email())]
     email: String,
     #[field(validate =
         len(2..32).or_else(msg!("Username length must be between 2 and 32 characters"))
@@ -140,7 +140,7 @@ async fn verification_get(token: Uuid) -> Status {
 
 #[derive(Debug, FromForm, Serialize, Deserialize)]
 struct LoginReq {
-    #[field(validate = validate_email())]
+    #[field(validate = is_email())]
     email: String,
     password: String,
 }

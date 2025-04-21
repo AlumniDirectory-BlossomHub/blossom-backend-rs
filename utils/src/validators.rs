@@ -1,3 +1,7 @@
+use chrono::NaiveDate;
+use lettre::Address;
+use phonenumber::{country, parse};
+use rocket::form;
 use rocket::form::{Error, Result};
 use rocket::fs::TempFile;
 
@@ -52,4 +56,40 @@ pub fn is_image_file<'v>(file: &TempFile<'_>) -> Result<'v, ()> {
         }
     }
     Err(Error::validation("content_type must be image/*").into())
+}
+
+/// 校验邮箱合法性
+pub fn is_email<'v>(email: &String) -> form::Result<'v, ()> {
+    match email.parse::<Address>() {
+        Ok(_) => Ok(()),
+        Err(_) => Err(Error::validation("Invalid email").into()),
+    }
+}
+
+/// 校验日期合法性
+///
+/// format %Y-%m-%d
+pub fn is_ymd_date<'v>(date: &String) -> form::Result<'v, ()> {
+    match NaiveDate::parse_from_str(date, "%Y-%m-%d") {
+        Ok(_) => Ok(()),
+        Err(_) => Err(Error::validation("Invalid date").into()),
+    }
+}
+
+/// 校验手机号合法性
+pub fn is_phone_number<'v>(phone: &String) -> form::Result<'v, ()> {
+    let input = phone.trim();
+
+    // 默认国家设置为中国
+    match parse(Some(country::CN), input) {
+        Ok(parsed_number) => {
+            if parsed_number.is_valid() {
+                Ok(())
+            } else {
+                println!("111");
+                Err(Error::validation("Invalid phone number").into())
+            }
+        }
+        Err(_) => Err(Error::validation("Unable to parse phone number").into()),
+    }
 }

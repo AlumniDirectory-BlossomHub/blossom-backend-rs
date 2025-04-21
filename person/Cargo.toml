@@ -1,0 +1,15 @@
+[package]
+name = "person"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rocket = { version = "0.5.1", features = ["secrets", "tls", "json"] }
+sqlx = { version = "0.8.3", features = ["postgres", "runtime-tokio-rustls"] }
+chrono = { version = "0.4.40", features = ["serde"] }
+phonenumber = { version = "0.3.7" }
+
+
+entity = { path = "../entity" }
+image-service = { path = "../image" }
+utils = { path = "../utils" }

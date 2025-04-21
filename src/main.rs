@@ -112,5 +112,6 @@ async fn rocket() -> _ {
         .manage(email)
         .mount("/", routes![index])
         .mount("/", account::routes())
+        .mount("/", person::routes())
         .mount("/test", image::routes())
 }

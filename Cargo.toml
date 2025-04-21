@@ -10,6 +10,7 @@ members = [
     "email",
     "entity",
     "image",
+    "person",
     "utils",
 ]
 
@@ -18,6 +19,7 @@ rocket = { version = "0.5.1", features = ["secrets", "tls", "json"] }
 sqlx = { version = "0.8.3", features = ["postgres", "runtime-tokio-rustls"] }
 
 account = { path = "account" }
+person = { path = "person" }
 image-service = { path = "image" }
 image = { version = "0.25.5", features = ["jpeg", "png"] }
 email = { path = "email" }
